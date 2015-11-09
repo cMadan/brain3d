@@ -11,6 +11,7 @@ find $subdir -name *.white| while read f; do
 	rm $f.ply
 done
 
+# need to (manually) clean directory first, otherwise there are other *.pial files that are irrelevant
 find $subdir -name *.pial| while read f; do
 	$mg -i $f -centre -o $f.ply
 	$ml -i $f.ply -o $f.ctm
