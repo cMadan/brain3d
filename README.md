@@ -29,4 +29,3 @@ This doesn't need to be run after scripts 1 and 2, but it seemed less essential.
 
 - Currently the mean/sd stats are based on the left hemisphere. Would be more appropriate to use the respective hemisphere when displaying these stats, but, not implemented yet.
 
-- Will change the brain3d.js script so that the column headers for the table (left panel) are specified in the html file, rather than directly in the script.
