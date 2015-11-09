@@ -106,7 +106,14 @@ h1 {
 	stroke: #ffffff;
 	stroke-width:3;
 }
-
+#text {
+	position:absolute;
+	padding:3;
+	color:white;
+	background-color:rgba(0,0,0,0.3);
+	z-index:20;
+    pointer-events:none;
+}
 .selected {
 	background-color:lightBlue !important;
 	color:black;
@@ -126,54 +133,4 @@ h1 {
 	margin:5px;
 	padding:5px 0px;
 	border:thin solid lightBlue;
-}
-
-/* Login
------------------------------------------------------------------------------*/
-#login {
-	/*text-align:center;*/
-	display:inline;
-}
-#login * {
-	width:auto;
-	display:inline;
-	vertical-align:middle;
-	text-decoration:none;
-}
-/*
-#login .hidden {
-	display:none !important;
-}
-*/
-.loginbox {
-	border:1px solid lightGrey;
-	position:absolute;
-	top:10px;
-	left:-150px;
-	background-color:white;
-	padding:20px;
-	max-width:80%;
-	margin-left: 50%;
-    width: 300px;
-    line-height:20px;
-	box-shadow: 0 10px 10px 0 rgba(0, 0, 0, 0.5);
-    z-index:20;
-}
-.loginbox * {
-	color:black;
-}
-.loginbox #username,
-.loginbox #e-mail,
-.loginbox #password,
-.loginbox #repassword,
-.loginbox #registerLink,
-.loginbox #remind,
-.loginbox #warning {
-	display:block;
-}
-.loginbox #username,
-.loginbox #e-mail,
-.loginbox #password,
-.loginbox #repassword {
-	width:90%;
 }

@@ -1,12 +1,15 @@
 /*
 
 brain3d.js
-Modified by Christopher Madan
-- Stripped out the database related stuff
-- Made more generic, not updateable/editable
+Last updated 20151109 [CRM]
 
 Originally based on qcsurf.js by Roberto Toro
 https://github.com/r03ert0/qcsurf
+
+Modified by Christopher Madan
+Main changes:
+- Stripped out the database related stuff
+- Made more generic, not updateable/editable
 
 */
 
@@ -19,6 +22,7 @@ var container;
 var overlay;
 var camera, scene, renderer, trackball;
 var mesh;
+var pop_stats;
 
 function configure_subjects() {
 
@@ -59,6 +63,12 @@ function configure_subjects() {
 		}
 	});
 	$($("tr")[indexSelected+1]).addClass('selected');
+	
+	// Load subject population stats
+	$.getJSON("fs/population_mean_sd.json",function(data) {
+		pop_stats=data;
+		console.log(pop_stats);
+	});
 }
 function init_gui() {	
 	// Listen to keyboard events
@@ -180,9 +190,9 @@ function loadStats() {
 				thick[lines[i].split(/[ ]+/)[0]]=parseFloat(lines[i].split(/[ ]+/)[4]);
 			}
 			$("#overlay").append("<br/>Regional Surface Area:<br />");
-			drawFingerprint(tsurf);
+			drawFingerprint({variable:"SurfArea",data:tsurf});
 			$("#overlay").append("<br/>Regional Cortical Thickness:<br />");
-			drawFingerprint(thick);
+			drawFingerprint({variable:"ThickAvg",data:thick});
 		}
 	});
 }
@@ -192,35 +202,41 @@ function makeSVG(tag, attrs) {
         el.setAttribute(k, attrs[k]);
     return el;
 }
-function drawFingerprint(data) {
+function drawFingerprint(param) {
 	
-	var svg,r,i,d,arr,n,max,val,x,y,path;
+	var svg,r,i,d,arr,n,max,val,x,y,path,f;
+	
+	arr=Object.keys(param.data);
 	
 	svg=makeSVG('svg',{viewBox:'0,0,110,110',width:200,height:200});
 	$("#overlay").append(svg);
 
 	// draw radar circles
 	for(r=0;r<=50;r+=12.5)
-		$(svg).append(makeSVG('circle',{stroke:'#ffffff','stroke-width':0.5,r:Math.max(r,0.5),cx:55,cy:55,fill:'none'}));
+		$(svg).append(makeSVG('circle',{stroke:(r%25==0)?'#ffffff':'rgba(255,255,255,0.5)','stroke-width':0.5,r:Math.max(r,0.5),cx:55,cy:55,fill:'none'}));
 
-	// get min/max data values
-	arr=Object.keys(data);
-	i=0;
-	for(val in data) {
-		if(i==0)
-			max=data[val];
-		else if(data[val]>max)
-			max=data[val];
-		i++;
-	}
-
+	// draw radar circles units
+	var txt=makeSVG('text',{x:50+12.5,y:57,"font-size":8,fill:"#afafaf"});
+	txt.innerHTML="-&sigma;&nbsp;&nbsp;&nbsp;&mu;&nbsp;&nbsp;&nbsp;+&sigma;";
+	rect = txt.getBBox();console.log(rect);
+	$(svg).append(makeSVG('rect',{x:50+12.5,y:51,width:40,height:8,fill:"rgba(0,0,0,0.5)"}));
+	$(svg).append(txt);
+	
 	// draw fingerprint path
 	d=[];
 	i=0;
 	n=arr.length;
-	for(val in data) {
-		x=55+50*data[val]/max*Math.cos(2*Math.PI*i/n);
-		y=55+50*data[val]/max*Math.sin(2*Math.PI*i/n);
+	for(val in param.data) {
+		// compute min/max from pop_stats: mean ± s.d.
+		min=pop_stats[val][param.variable].m-2*pop_stats[val][param.variable].s;
+		max=pop_stats[val][param.variable].m+2*pop_stats[val][param.variable].s;
+
+		// compute subject value
+		r=(param.data[val]-min)/(max-min);
+		if(r>1) r=1;
+		if(r<0) r=0;
+		x=55+50*r*Math.cos(2*Math.PI*i/n);
+		y=55+50*r*Math.sin(2*Math.PI*i/n);
 		d.push( ((i==0)?"M":"L")+x+","+y);
 		i++;
 	}
@@ -231,10 +247,19 @@ function drawFingerprint(data) {
 
 	// draw region dots
 	i=0;
-	for(val in data) {
-		x=55+50*data[val]/max*Math.cos(2*Math.PI*i/n);
-		y=55+50*data[val]/max*Math.sin(2*Math.PI*i/n);
-		var reg=makeSVG('circle',{class:'region ',title:val,fill:'#ffffff',r:2,cx:x,cy:y});
+	for(val in param.data) {
+		// compute min/max from pop_stats: mean ± s.d.
+		min=pop_stats[val][param.variable].m-2*pop_stats[val][param.variable].s;
+		max=pop_stats[val][param.variable].m+2*pop_stats[val][param.variable].s;
+
+		// compute subject value
+		r=(param.data[val]-min)/(max-min);
+		f='#ffffff';
+		if(r>1){ r=1;f="#ff0000"};
+		if(r<0){ r=0;f="#ff0000"};
+		x=55+50*r*Math.cos(2*Math.PI*i/n);
+		y=55+50*r*Math.sin(2*Math.PI*i/n);
+		var reg=makeSVG('circle',{class:'region ',title:val,fill:f,r:2,cx:x,cy:y});
 		$(svg).append(reg);
 		i++;
 	}
@@ -242,17 +267,14 @@ function drawFingerprint(data) {
 	$(".region").hover(function(){
 		var x=$(this).attr('cx');
 		var y=$(this).attr('cy');
-		//var text=makeSVG('text',{fill:'#ffffff',x:x,y:y});
-		//$(text).text($(this).attr('title'));
-		//$(this).parent().append(text);
 		var svg=$(this).closest("svg")[0];
 		var m=svg.getScreenCTM();
 		var p=svg.createSVGPoint();
 		p.x=x;
 		p.y=y;
 		var pp=p.matrixTransform(m);
-		$("#plop").css({left:pp.x,top:pp.y});
-		$("#plop").text($(this).attr('title'));
+		$("#text").css({left:pp.x,top:pp.y});
+		$("#text").text($(this).attr('title'));
 	});
 }
 function onWindowResize( event ) {
@@ -270,3 +292,52 @@ function render() {
 	renderer.render( scene, camera );
 	trackball.update();
 }
+
+/*
+Bash script to compute population means and standard deviations.
+[ Run from within subject_dir ]
+
+One-liner:
+vals=( NumVert SurfArea GrayVol ThickAvg ThickStd MeanCurv GausCurv FoldInd CurvInd );for ((k=0;k<9;k++)); do filename=${vals[k]};j=$((k+2));for ((i=54;i<88;i++)); do find . -name lh.aparc.stats|while read f; do awk 'NR=='$i'{print $1,$'$j'}' $f;done|awk 'BEING{s=0;ss=0;n=0}{n=n+1;split($0,arr," ");name=arr[1];s+=arr[2];ss+=arr[2]*arr[2]}END{print name,s/n,sqrt(ss/n-s*s/n/n)}'; done|tee $filename.txt;done
+
+Human-readable:
+vals=( NumVert SurfArea GrayVol ThickAvg ThickStd MeanCurv GausCurv FoldInd CurvInd )
+for ((k=0;k<9;k++)); do
+	filename=${vals[k]}
+	j=$((k+2))
+	for ((i=54;i<88;i++)); do
+		find . -name lh.aparc.stats|while read f; do
+			awk 'NR=='$i'{print $1,$'$j'}' $f
+		done|awk 'BEGIN{s=0;ss=0;n=0}
+		          {n=n+1;split($0,arr," ");name=arr[1];s+=arr[2];ss+=arr[2]*arr[2]}
+		          END{print name,s/n,sqrt(ss/n-s*s/n/n)}'
+	done|tee $filename.txt
+done
+*/
+
+/*
+Now, this one it puts all values into a JSON file with all structures and measurements:
+
+Killer one-liner (to execute inside the FS directory):
+vals=( NumVert SurfArea GrayVol ThickAvg ThickStd MeanCurv GausCurv FoldInd CurvInd );echo -n "{";for ((k=0;k<9;k++)); do filename=${vals[k]};j=$((k+2));for ((i=54;i<88;i++)); do find . -name lh.aparc.stats|while read f; do awk 'NR=='$i'{print $1,$'$j'}' $f;done|awk 'BEING{s=0;ss=0;n=0}{n=n+1;split($0,arr," ");name=arr[1];s+=arr[2];ss+=arr[2]*arr[2]}END{print "'${vals[k]}'",name,s/n,sqrt(ss/n-s*s/n/n)}'; done;done|awk '{meas=$1;reg=$2;mean=$3;sd=$4;if(arr[reg])arr[reg]=arr[reg]",";arr[reg]=arr[reg]meas":{m:"mean",s:"sd"}"}END{n=0;for(i in arr)n++;j=0;for(i in arr){printf i":{"arr[i]"}";j++;if(j<n)print","}}'|sed -E 's/([a-zA-Z]+)/"\1"/g';echo "}"
+[ Run from within subject_dir ]
+
+Human-readable:
+vals=( NumVert SurfArea GrayVol ThickAvg ThickStd MeanCurv GausCurv FoldInd CurvInd );
+echo -n "{";
+
+for ((k=0;k<9;k++)); do
+ filename=${vals[k]};j=$((k+2));
+ for ((i=54;i<88;i++)); do
+	find . -name lh.aparc.stats
+	|while read f; do
+		awk 'NR=='$i'{print $1,$'$j'}' $f;
+	done
+	|awk 'BEING{s=0;ss=0;n=0}{n=n+1;split($0,arr," ");name=arr[1];s+=arr[2];ss+=arr[2]*arr[2]}END{print "'${vals[k]}'",name,s/n,sqrt(ss/n-s*s/n/n)}';
+ done;
+done
+|awk '{meas=$1;reg=$2;mean=$3;sd=$4;if(arr[reg])arr[reg]=arr[reg]",";arr[reg]=arr[reg]meas":{m:"mean",s:"sd"}"}END{n=0;for(i in arr)n++;j=0;for(i in arr){printf i":{"arr[i]"}";j++;if(j<n)print","}}'
+|sed -E 's/([a-zA-Z]+)/"\1"/g';
+
+echo "}"
+*/
