@@ -1,10 +1,17 @@
+/*
+
+brain3d.js
+Modified by Christopher Madan
+- Stripped out the database related stuff
+- Made more generic, not updateable/editable
+
+Originally based on qcsurf.js by Roberto Toro
+https://github.com/r03ert0/qcsurf
+
+*/
+
 var debug=0;
 var indexSelected=0;
-
-var localhost="localhost";
-var dbroot="http://"+localhost+"/interact/php/interact.php";
-var myOrigin={appName:"QCSurf"};
-var myIP;
 
 var W;
 var H;
@@ -18,10 +25,10 @@ function configure_subjects() {
 	// Add table header
 	$("#subjects table").append([
 		"<tr>",
-		"	<th> </th>",
+		"	<th>#</th>",
 		"	<th>SubjectID</th>",
-		"	<th>QC</th>",
-		"	<th>Comment</th>",
+		"	<th>Value 1</th>",
+		"	<th>Value 2</th>",
 		"</tr>"
 	].join("\n"));
 
@@ -32,15 +39,12 @@ function configure_subjects() {
 			"<tr>",
 			"	<td>"+(i+1)+"</td>",
 			"	<td>"+sub[i].id+"</td>",
-			"	<td class='editable'>"+(sub[i].qc||"")+"</td>",
-			"	<td class='editable'>"+(sub[i].comment||"")+"</td>",
+			"	<td>"+sub[i].val1+"</td>",
+			"	<td>"+sub[i].val2+"</td>",
 			"</tr>"
 		].join("\n"));
 	}
-	
-	// Turn content editable in editable fields
-	$(".editable").attr("contentEditable",true);
-	
+		
 	// Update brain display on row selection
 	$("tr").click(function() {
 		var i=parseInt($($(this).find("td")[0]).text())-1;
@@ -267,124 +271,6 @@ function render() {
 	trackball.update();
 }
 
-/*
-Annotation storage
-*/
-function interactIP() {
-/*
-	Get my IP
-*/
-	if(debug) console.log("> interactIP promise");
-
-	console.log("<br />Connecting to database...");
-	return $.get(dbroot,{
-		"action":"remote_address"
-	}).success(function(data) {
-		console.log("< interactIP resolve: success");
-		myIP=data;
-	}).error(function(jqXHR, textStatus, errorThrown) {
-		console.log("< interactIP resolve: ERROR, "+textStatus+", "+errorThrown);
-		console.log("<br />Error: Unable to connect to database.");
-	});
-}
-function interactSave() {
-/*
-	Save QC to Interact DB
-*/
-	if(debug) console.log("> save promise");
-
-	var i;
-	var	key;
-	var value;
-	var origin;
-
-	// key
-	key="QCSurf";
-
-	// configure value to be saved
-	value=[];
-	for(i=0;i<sub.length;i++)
-	{
-		var el={};
-		el.id=sub[i].id;
-		el.qc=$($($("tr")[i+1]).find("td")[2]).text();
-		el.comment=$($($("tr")[i+1]).find("td")[3]).text();
-		value.push(el);
-	}
-	return $.ajax({
-		url:dbroot,
-		type:"POST",
-		data:{
-			"action":"save",
-			"origin":JSON.stringify(myOrigin),
-			"key":key,
-			"value":JSON.stringify(value)
-		},
-		success: function(data) {
-			console.log("< interactSave resolve: Successfully saved QC");
-			$("#footer").html("Last saved "+new Date());
-		},
-		error: function(jqXHR, textStatus, errorThrown) {
-			console.log("< interactSave resolve: ERROR: " + textStatus + " " + errorThrown);
-		}
-	});
-}
-function interactLoad() {
-/*
-	Load QC from Interact DB
-*/
-	if(debug==debug) console.log("> interactLoad promise");
-
-	var	def=$.Deferred();
-	var	key="QCSurf";
-
-	$.get(dbroot,{
-		"action":"load_last",
-		"origin":JSON.stringify(myOrigin),
-		"key":key
-	}).success(function(data) {
-		var	obj=JSON.parse(data);
-		if(obj) {
-			var time=obj.myTimestamp;
-			$("#footer").html("Last saved "+time);
-			
-			var val=JSON.parse(obj.myValue);
-			if(val) {
-				var i,arr=$("tr");
-				for(i=0;i<arr.length;i++)
-					arr[i].remove();
-				sub=val;
-				configure_subjects();
-			}
-		}
-		if(debug==debug) console.log("< interactLoad resolve success");
-		def.resolve();
-	}).error(function(jqXHR, textStatus, errorThrown) {
-		console.log("< interactLoad resolve ERROR: " + textStatus + " " + errorThrown);
-	});
-
-	return def.promise();
-}
-
-function loginChanged() {
-	if(debug) console.log("> loginChanged");
-
-	updateUser();
-}
-function updateUser() {
-	if(debug) console.log("> updateUser");
-
-	if(MyLoginWidget.username)
-		myOrigin.user=MyLoginWidget.username;
-	else {
-		var username={};
-		username.IP=myIP;
-		username.hash=navigator.userAgent.split("").reduce(function(a,b){
-			a=((a<<5)-a)+b.charCodeAt(0);return a&a
-		},0).toString(16);
-		myOrigin.user=username;
-	}
-}
 
 /*
  Bash script to compute population means and standard deviations.

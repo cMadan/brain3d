@@ -8,16 +8,13 @@
 <body>
 
 <div id="toolbar">
-	<span id="MyLogin"></span>
+	<h1>brain3d</h1>
 	<span id="hemisphere"  class="select"><span id="left" class="button selected">Left</span><span id="right"  class="button">Right</span></span>
-	<span id="surface" class="select"><span id="pial" class="button">Pial</span><span id="white" class="button selected">White</span></span>
-	<span id="save" class="button">Save</span>
-	
-	<h1 style="float:right"><i>QCSurf</i></h1>
+	<span id="surface" class="select"><span id="pial" class="button selected">Pial</span><span id="white" class="button">White</span></span>
 </div>
 
 <div id="subjects">
-	<table id="qctable">
+	<table id="val_table">
 	</table>
 </div>
 
@@ -37,30 +34,22 @@
 <script src="js/lzma.js"></script>
 <script src="js/ctm.js"></script>
 <script src="js/CTMLoader.js"></script>
-<script src="js/mylogin/login.js"></script>
 
 <script>
-	var sub=[{id:"0050002"}, {id:"0050003"}, {id:"0050004"}, {id:"0050005"}, {id:"0050006"}, {id:"0050007"}, {id:"0050008"}, {id:"0050009"}, {id:"0050010"}, {id:"0050011"}];
+	var sub=[ {id:"IXI002",val1:"Something",val2:"More Comments"},
+			  {id:"IXI012",val1:"Filler",val2:"Some text values"}, 
+			  {id:"IXI013",val1:"More filler",val2:"This could be populated from elsewhere"}, 
+			  {id:"IXI014",val1:"Blah",val2:"Text"}, 
+			  {id:"IXI015",val1:"Foo",val2:"bar"} ];
 </script>
 
-<script src="js/qcsurf.js"></script>
+<script src="js/brain3d.js"></script>
 <script>
 	init_gui();
 	init_3d();
 	configure_subjects();
 	loadMesh();
 	animate();
-	
-	interactIP();
-	MyLoginWidget.init($("#MyLogin"));
-	
-	MyLoginWidget.init($("#MyLogin"))
-	.then(interactIP)
-	.then(function(){
-		updateUser();
-		interactLoad();
-	});
-	MyLoginWidget.subscribe(loginChanged);
 </script>
 
 </body>
